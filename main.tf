@@ -25,15 +25,15 @@ provider "aws" {
 }
 
 # ---------------------------------------------------
-# Get latest CentOS 7/Stream AMI (official owner)
+# Ubuntu 22.04 LTS AMI (FREE TIER SAFE)
 # ---------------------------------------------------
-data "aws_ami" "centos" {
+data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["125523088429"] # CentOS official (AWS marketplace)
+  owners      = ["099720109477"] # Canonical (Ubuntu official)
 
   filter {
     name   = "name"
-    values = ["CentOS*7*"] # or CentOS Stream if available
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
   }
 
   filter {
@@ -52,20 +52,20 @@ resource "tls_private_key" "ssh_key" {
 
 resource "local_file" "private_key" {
   content         = tls_private_key.ssh_key.private_key_pem
-  filename        = "${path.module}/church-key.pem"
+  filename        = "${path.module}/ubuntu-key.pem"
   file_permission = "0400"
 }
 
-resource "aws_key_pair" "church_key" {
-  key_name   = "church-key"
+resource "aws_key_pair" "ubuntu_key" {
+  key_name   = "ubuntu-key"
   public_key = tls_private_key.ssh_key.public_key_openssh
 }
 
 # ---------------------------------------------------
 # Security Group (SSH + HTTP)
 # ---------------------------------------------------
-resource "aws_security_group" "church_sg" {
-  name        = "church-sg"
+resource "aws_security_group" "ubuntu_sg" {
+  name        = "ubuntu-sg"
   description = "Allow SSH and HTTP"
 
   ingress {
@@ -91,30 +91,30 @@ resource "aws_security_group" "church_sg" {
 }
 
 # ---------------------------------------------------
-# EC2 Instance (CentOS)
+# EC2 Instance (FREE TIER)
 # ---------------------------------------------------
-resource "aws_instance" "church" {
-  ami                    = data.aws_ami.centos.id
+resource "aws_instance" "ubuntu_server" {
+  ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t2.micro"
-  key_name               = aws_key_pair.church_key.key_name
-  vpc_security_group_ids = [aws_security_group.church_sg.id]
+  key_name               = aws_key_pair.ubuntu_key.key_name
+  vpc_security_group_ids = [aws_security_group.ubuntu_sg.id]
 
   tags = {
-    Name = "churchserver"
+    Name = "ubuntu-server"
   }
 }
 
 # ---------------------------------------------------
-# Outputs
+# OUTPUTS
 # ---------------------------------------------------
 output "server_ip" {
-  value = aws_instance.church.public_ip
+  value = aws_instance.ubuntu_server.public_ip
 }
 
 output "ssh_command" {
-  value = "ssh -i church-key.pem centos@${aws_instance.church.public_ip}"
+  value = "ssh -i ubuntu-key.pem ubuntu@${aws_instance.ubuntu_server.public_ip}"
 }
 
 output "private_key_location" {
-  value = "${path.module}/church-key.pem"
+  value = "${path.module}/ubuntu-key.pem"
 }
